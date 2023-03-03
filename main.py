@@ -58,3 +58,28 @@ async def update_char(id: int, karakter: charModel):
     (karakter.nama, karakter.senjata, karakter.role, karakter.ultimate, id))
     db.commit()
     return{"data berhasil di update"}
+
+#ganti data dari tables yang dipilih saja
+@app.patch("/patch/{id}")
+async def perbarui_item(id: int, char: charModel):
+    query = "UPDATE karakter SET "
+    values = []
+    if char.nama:
+        query += "nama=%s, "
+        values.append(char.nama)
+    if char.senjata:
+        query += "senjata=%s, "
+        values.append(char.senjata)
+    if char.ultimate:
+        query += "ultimate=%s, "
+        values.append(char.ultimate)
+    if char.role:
+        query += "role=%s, "
+        values.append(char.role)
+    # hapus koma terakhir pada query
+    query = query[:-2]
+    query += " WHERE id=%s"
+    values.append(id)
+    perintah.execute(query, tuple(values))
+    db.commit()
+    return {"status": "Data berhasil diperbarui"}
