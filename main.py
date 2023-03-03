@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
+import mysql.connector
 
 app = FastAPI()
 
@@ -10,62 +11,50 @@ class charModel(BaseModel):
     ultimate: str
     role: str
 
-# data awal
-charList = {
-    "godim": {"nama": "godim", "senjata": "maken", "ultimate": "honouu slash", "role": "makenshi"},
-    "ivana": {"nama": "ivana", "senjata": "Suee", "ultimate": "Fiiaaa Bollll", "role": "mahotskai"},
-    "cuki": {"nama": "cukiiii", "senjata": "kawai kao", "ultimate": "moe moe kyun", "role": "sapotaaa"}
-}
+# database
+db = mysql.connector.connect(
+    host="localhost",
+    user="root",
+    password="",
+    database="datakarakter"
+)
+
+#perintah
+perintah = db.cursor()
 
 # tampil
 @app.get("/list/")
 async def read_items():
-    return charList
+    perintah.execute("SELECT * FROM karakter")
+    hasil = perintah.fetchall()
+    return hasil
 
 # nambah
 @app.post("/tambah/")
 async def tambah(karakter: charModel):
-    dic = karakter.dict()
-    nama = dic["nama"].lower()
-    charList[nama] = dic
-    return {"message": "Character added successfully"}
+    perintah.execute("INSERT INTO karakter (nama, senjata, role, ultimate) VALUES (%s, %s, %s, %s)",
+    (karakter.nama, karakter.senjata, karakter.role, karakter.ultimate))
+    db.commit()
+    return{"data berhasil ditambahkan"}
 
-@app.get("/cari/{nama}")
-async def baca(nama: str):
-    nama = nama.lower()
-    if nama in charList:
-        return charList[nama]
-    else:
-        return {"message": "Character not found"}
-        
+#cari nama    
+@app.get("/cari/{id}")
+async def baca(id: int):
+    perintah.execute("SELECT * FROM karakter WHERE id= %s", (id,))
+    hasil = perintah.fetchone()
+    return hasil
+
 #hapus
-@app.delete("/hapus/{namaChar}")
-async def hapus_char(namaChar: str):
-    namaChar = namaChar.lower()
-    if namaChar in charList:
-        del charList[namaChar]
-        return {"terhapus"}
-    else:
-        return{"nama tidak ada"}
+@app.delete("/hapus/{id}")
+async def hapus_char(id: int):
+    perintah.execute("DELETE FROM karakter WHERE id= %s", (id,))
+    db.commit()
+    return{"data berhasil dihapus"}
 
 #ganti seluruh data
-@app.put("/update/{nama}")
-async def update_char(nama:str, karakter:charModel):
-    nama = nama.lower()
-    if nama in charList:
-        charList[nama] = karakter.dict()
-        return{"update berhasil"}
-    else:
-        return{"nama tidak ditemukan"}    
-
-#mengganti data yang diinginkan
-@app.patch("/patch/{nama}")
-async def patch_char(nama: str, karakter:charModel):
-    nama= nama.lower()
-    if nama in charList:
-        up = karakter.dict(exclude_unset = True)
-        charList[nama].update(up)
-        return{"update pada" + nama + "berhasi"}
-    else:
-        return{"data tidak ditemukan"}
-
+@app.put("/update/{id}")
+async def update_char(id: int, karakter: charModel):
+    perintah.execute("UPDATE karakter SET nama= %s, senjata=%s, role= %s, ultimate= %s WHERE id= %s",
+    (karakter.nama, karakter.senjata, karakter.role, karakter.ultimate, id))
+    db.commit()
+    return{"data berhasil di update"}
